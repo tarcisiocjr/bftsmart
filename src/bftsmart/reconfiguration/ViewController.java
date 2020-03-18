@@ -15,14 +15,14 @@ limitations under the License.
 */
 package bftsmart.reconfiguration;
 
-import java.net.SocketAddress;
-
 import bftsmart.reconfiguration.util.TOMConfiguration;
 import bftsmart.reconfiguration.views.DefaultViewStorage;
 import bftsmart.reconfiguration.views.View;
 import bftsmart.reconfiguration.views.ViewStorage;
 import bftsmart.tom.util.KeyLoader;
-import java.security.Provider;
+
+import java.lang.reflect.Constructor;
+import java.net.SocketAddress;
 
 /**
  *
@@ -34,6 +34,7 @@ public class ViewController {
     protected View currentView = null;
     private TOMConfiguration staticConf;
     private ViewStorage viewStore;
+    private String configHome = "";
 
     public ViewController(int procId, KeyLoader loader) {
         this.staticConf = new TOMConfiguration(procId, loader);
@@ -41,6 +42,7 @@ public class ViewController {
 
     
     public ViewController(int procId, String configHome, KeyLoader loader) {
+        this.configHome = configHome;
         this.staticConf = new TOMConfiguration(procId, configHome, loader);
     }
 
@@ -49,7 +51,12 @@ public class ViewController {
         if (this.viewStore == null) {
             String className = staticConf.getViewStoreClass();
             try {
-                this.viewStore = (ViewStorage) Class.forName(className).newInstance();
+                if (configHome.equals(""))
+                    this.viewStore = (ViewStorage) Class.forName(className).newInstance();
+                else {
+                    Constructor c = Class.forName(className).getConstructor(String.class);
+                    this.viewStore = (ViewStorage) c.newInstance(configHome);
+                }
             } catch (Exception e) {
                 this.viewStore = new DefaultViewStorage(this.staticConf.getConfigHome());
             }
@@ -58,8 +65,21 @@ public class ViewController {
         return this.viewStore;
     }
 
-    public View getCurrentView(){
-        if(this.currentView == null){
+//    public final ViewStorage getViewStore() {
+//        if (this.viewStore == null) {
+//            String className = staticConf.getViewStoreClass();
+//            try {
+//                this.viewStore = (ViewStorage) Class.forName(className).newInstance();
+//            } catch (Exception e) {
+//                this.viewStore = new DefaultViewStorage(configHome);
+//            }
+//
+//        }
+//        return this.viewStore;
+//    }
+
+    public View getCurrentView() {
+        if(this.currentView == null) {
              this.currentView = getViewStore().readView();
         }
         return this.currentView;
